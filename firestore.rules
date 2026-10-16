@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Per-user private data (meetings + recordings metadata)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Meeting rooms: anyone with the code can read, signed-in users create rooms
+    match /meetings/{code} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      // Chat: participants (guests included) read/write messages
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['uid','name','text','createdAt'])
+                      && request.resource.data.uid is string
+                      && request.resource.data.uid.size() > 0
+                      && request.resource.data.uid.size() < 128
+                      && request.resource.data.name is string
+                      && request.resource.data.name.size() > 0
+                      && request.resource.data.name.size() < 64
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() < 2000
+                      && request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

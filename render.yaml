@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: vuga-signal
+    env: docker
+    rootDir: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://vuga.web.app
+      - key: PORT
+        value: 3001
