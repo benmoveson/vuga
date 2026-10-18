@@ -161,8 +161,9 @@ export default function useWebRTC(roomCode, user, localStream) {
       );
     });
 
-    socket.on('room-peers', ({ peers: existing, hostId: roomHostId }) => {
-      setHostId(roomHostId || null);
+    socket.on('room-peers', (payload) => {
+      const existing = Array.isArray(payload) ? payload : payload?.peers;
+      if (!Array.isArray(payload)) setHostId(payload?.hostId || null);
       (existing || []).forEach((peer) => createPeer(peer.socketId, true, peer));
     });
 
