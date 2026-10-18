@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import HeroScene from '../components/HeroScene.jsx';
+import { sanitizeMeetingCode } from '../lib/meetingCode.js';
+import { lazy, Suspense } from 'react';
+const HeroScene = lazy(() => import('../components/HeroScene.jsx'));
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -15,7 +17,7 @@ export default function Landing() {
   }
 
   function join() {
-    const code = joinCode.trim().replace(/.*\//, '').toUpperCase();
+    const code = sanitizeMeetingCode(joinCode.trim().replace(/.*\//, ''));
     if (code) navigate(`/join/${code}`);
   }
 
@@ -47,7 +49,7 @@ export default function Landing() {
 
       <main>
         <section className="hero">
-          <HeroScene />
+          <Suspense fallback={<div style={{height:400}}/>}><HeroScene /></Suspense>
           <div className="container hero-content">
             <span className="hero-badge">
               <i className="fas fa-shield-halved"></i> Private links · peer-to-peer video

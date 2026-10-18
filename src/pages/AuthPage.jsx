@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext.jsx';
 export default function AuthPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { user, signup, login } = useAuth();
+  const { user, signup, login, resetPassword } = useAuth();
   const showToast = useToast();
 
   const [tab, setTab] = useState(params.get('tab') === 'login' ? 'login' : 'signup');
@@ -18,6 +18,9 @@ export default function AuthPage() {
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
+
+  const [showSignupPass, setShowSignupPass] = useState(false);
+  const [showLoginPass, setShowLoginPass] = useState(false);
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
@@ -45,6 +48,20 @@ export default function AuthPage() {
       await login(loginEmail, loginPass);
       showToast('Welcome back!');
       navigate('/dashboard');
+    } catch (err) {
+      showToast(err.message.replace('Firebase: ', ''));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    const email = loginEmail.trim();
+    if (!email) return showToast('Enter your email above first');
+    setBusy(true);
+    try {
+      await resetPassword(email);
+      showToast('Password reset email sent — check your inbox');
     } catch (err) {
       showToast(err.message.replace('Firebase: ', ''));
     } finally {
@@ -85,7 +102,12 @@ export default function AuthPage() {
               </div>
               <div className="form-group">
                 <label>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+                <div className="password-wrap">
+                  <input type={showSignupPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+                  <button type="button" className="password-toggle" onClick={() => setShowSignupPass((v) => !v)} aria-label={showSignupPass ? 'Hide password' : 'Show password'}>
+                    <i className={`fas ${showSignupPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
               </div>
               <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
                 {busy ? 'Creating…' : 'Create Account'}
@@ -100,7 +122,15 @@ export default function AuthPage() {
               </div>
               <div className="form-group">
                 <label>Password</label>
-                <input type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••••••" required />
+                <div className="password-wrap">
+                  <input type={showLoginPass ? 'text' : 'password'} value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••••••" required />
+                  <button type="button" className="password-toggle" onClick={() => setShowLoginPass((v) => !v)} aria-label={showLoginPass ? 'Hide password' : 'Show password'}>
+                    <i className={`fas ${showLoginPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
+                <button type="button" className="forgot-link" onClick={handleForgotPassword} disabled={busy}>
+                  Forgot password?
+                </button>
               </div>
               <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
                 {busy ? 'Signing in…' : 'Log In'}

@@ -3,16 +3,19 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import {
+  MAX_ROOM_PEERS,
+  MAX_NAME_LEN,
+  MAX_ID_LEN,
+  SIGNAL_RATE_PER_SEC,
+  SIGNAL_BURST,
+  cleanRoom,
+  cleanStr,
+  validSignalData
+} from './signalLib.js';
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
-
-const MAX_ROOM_LEN = 32;
-const MAX_NAME_LEN = 64;
-const MAX_ID_LEN = 128;
-const MAX_ROOM_PEERS = 12;
-const SIGNAL_RATE_PER_SEC = 40;
-const SIGNAL_BURST = 80;
 
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
@@ -30,24 +33,6 @@ const rooms = new Map();
 
 function roomUsers(room) {
   return [...(rooms.get(room)?.values() || [])];
-}
-
-function cleanRoom(value) {
-  return String(value || '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, '')
-    .slice(0, MAX_ROOM_LEN);
-}
-
-function cleanStr(value, max) {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
-function validSignalData(data) {
-  if (!data || typeof data !== 'object') return false;
-  if (data.sdp && typeof data.sdp === 'object') return true;
-  if (data.candidate && typeof data.candidate === 'object') return true;
-  return false;
 }
 
 io.on('connection', (socket) => {

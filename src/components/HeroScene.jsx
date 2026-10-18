@@ -3,8 +3,8 @@ import { Float, RoundedBox, Sparkles } from '@react-three/drei';
 import { Suspense, useRef } from 'react';
 import * as THREE from 'three';
 
-const PRIMARY = '#0F4C81';
-const ACCENT = '#00C2FF';
+const PRIMARY = '#e8590c';
+const ACCENT = '#ff7a33';
 
 function VugaMark() {
   const group = useRef();
@@ -26,7 +26,7 @@ function VugaMark() {
     <group ref={group}>
       <Float speed={1.4} rotationIntensity={0.4} floatIntensity={1.1}>
         <mesh ref={knot} scale={1.15}>
-          <torusKnotGeometry args={[1.1, 0.28, 220, 32]} />
+          <torusKnotGeometry args={[1.1, 0.28, 120, 16]} />
           <meshStandardMaterial
             color={ACCENT}
             emissive={ACCENT}
@@ -51,7 +51,7 @@ function VugaMark() {
         </mesh>
       </Float>
 
-      <Sparkles count={90} scale={7} size={2.6} speed={0.4} color={ACCENT} opacity={0.7} />
+      <Sparkles count={40} scale={7} size={2.6} speed={0.4} color={ACCENT} opacity={0.7} />
     </group>
   );
 }
@@ -70,7 +70,7 @@ function VideoPanel({ position, rotation, delay = 0 }) {
     <group ref={ref} position={position} rotation={rotation}>
       <RoundedBox args={[1.5, 0.95, 0.08]} radius={0.09} smoothness={4}>
         <meshStandardMaterial
-          color="#0A3A66"
+          color="#26352f"
           emissive={ACCENT}
           emissiveIntensity={0.18}
           metalness={0.7}
@@ -105,8 +105,8 @@ export default function HeroScene() {
     <Canvas
       className="hero-canvas"
       camera={{ position: [0, 0.4, 6], fov: 45 }}
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: true }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: false, alpha: true }}
     >
       <Suspense fallback={null}>
         <ambientLight intensity={0.35} />

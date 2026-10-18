@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Per-user private data (meetings + recordings metadata)
+    // Per-user private data (profile, meetings + recordings metadata)
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
@@ -10,12 +10,10 @@ service cloud.firestore {
       }
     }
 
-    // Meeting rooms: anyone with the code can read, signed-in users create rooms
+    // Meeting chat: room code is the shared secret. Guests (unauthenticated)
+    // may read and create messages, but content is strictly validated and
+    // messages are immutable (no edit/delete spam).
     match /meetings/{code} {
-      allow read: if true;
-      allow write: if request.auth != null;
-
-      // Chat: participants (guests included) read/write messages
       match /messages/{messageId} {
         allow read: if true;
         allow create: if request.resource.data.keys().hasOnly(['uid','name','text','createdAt'])

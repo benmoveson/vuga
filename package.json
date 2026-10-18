@@ -9,7 +9,9 @@
     "dev:server": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",
@@ -26,10 +28,17 @@
     "three": "^0.169.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^4.3.2",
     "concurrently": "^9.0.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
     "vite": "^5.4.9",
     "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.9",
     "workbox-build": "^7.4.1",
     "workbox-window": "^7.4.1"
   }

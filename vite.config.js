@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Vuga — Host Online Meetings Instantly',
         short_name: 'Vuga',
         description: 'Create a meeting link, video call, share your screen, and record instantly.',
-        theme_color: '#0F4C81',
-        background_color: '#F4F7FB',
+        theme_color: '#e8590c',
+        background_color: '#faf7f2',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -22,11 +22,36 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2}'],
-        navigateFallback: '/index.html'
+        globPatterns: ['**/*.{js,css,svg,ico,png,woff2}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: undefined,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'vuga-pages',
+              networkTimeoutSeconds: 3,
+              fetchOptions: { cache: 'no-store' },
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 }
+            }
+          }
+        ]
       }
     })
   ],
   server: { port: 5173 },
-  build: { chunkSizeWarningLimit: 1600 }
+  build: {
+        chunkSizeWarningLimit: 1200,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom', 'react-router-dom'],
+              r3f: ['@react-three/fiber', '@react-three/drei', 'three']
+            }
+          }
+        }
+      }
 });

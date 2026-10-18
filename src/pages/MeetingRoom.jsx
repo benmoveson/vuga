@@ -20,7 +20,7 @@ function GuestGate({ code, onJoin }) {
     <div className="auth-container">
       <div className="auth-card">
         <h2 style={{ marginBottom: 8 }}>Join meeting {code}</h2>
-        <p style={{ color: '#5A6478', marginBottom: 20, fontSize: '0.9rem' }}>Enter your name to continue.</p>
+        <p style={{ color: 'var(--text-light)', marginBottom: 20, fontSize: '0.9rem' }}>Enter your name to continue.</p>
         <div className="form-group">
           <label>Display name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -40,6 +40,7 @@ export default function MeetingRoom() {
   const { user } = useAuth();
 
   const [guestName, setGuestName] = useState('');
+  const [guestId, setGuestId] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [screenStream, setScreenStream] = useState(null);
   const [micOn, setMicOn] = useState(true);
@@ -51,16 +52,17 @@ export default function MeetingRoom() {
   const camRef = useRef(null);
   const screenRef = useRef(null);
   const screenAudioCtxRef = useRef(null);
-  const guestIdRef = useRef(null);
-  if (!guestIdRef.current) {
-    guestIdRef.current = `guest-${Math.random().toString(36).slice(2, 10)}`;
-  }
 
   const identity = useMemo(() => {
     if (user) return { uid: user.uid, name: user.displayName || user.email || 'Host' };
-    if (guestName) return { uid: guestIdRef.current, name: guestName };
+    if (guestName && guestId) return { uid: guestId, name: guestName };
     return null;
-  }, [user, guestName]);
+  }, [user, guestName, guestId]);
+
+  function joinAsGuest(name) {
+    setGuestId(`guest-${Math.random().toString(36).slice(2, 10)}`);
+    setGuestName(name);
+  }
 
   const { peers, joinError, replaceVideoTrack, replaceAudioTrack } = useWebRTC(
     identity ? code : null,
@@ -210,7 +212,7 @@ export default function MeetingRoom() {
     navigate(user ? '/dashboard' : '/');
   }
 
-  if (!identity) return <GuestGate code={code} onJoin={setGuestName} />;
+  if (!identity) return <GuestGate code={code} onJoin={joinAsGuest} />;
 
   const activePeers = peers.filter((p) => p.stream);
   const mainIsScreen = !!screenStream;
@@ -319,6 +321,7 @@ export default function MeetingRoom() {
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Type a message..."
+              maxLength={2000}
             />
             <button type="submit"><i className="fas fa-paper-plane"></i></button>
           </form>

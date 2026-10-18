@@ -1,18 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db, storage, auth } from '../firebase.js';
-
-function downloadBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
+import { useToast } from '../context/ToastContext.jsx';
+import { pickMime, recordingFileName, saveRecording } from '../lib/recording.js';
 
 function mixAudio(streams) {
   const withAudio = streams.filter((s) => s && s.getAudioTracks().length > 0);
@@ -28,6 +16,7 @@ function mixAudio(streams) {
 }
 
 export default function useRecording() {
+  const showToast = useToast();
   const canvasRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -68,7 +57,7 @@ export default function useRecording() {
         ctx.save();
         ctx.beginPath();
         ctx.roundRect(x - 4, y - 4, pw + 8, ph + 8, 12);
-        ctx.fillStyle = '#00C2FF';
+        ctx.fillStyle = '#e8590c';
         ctx.fill();
         ctx.clip();
         ctx.drawImage(cam, x, y, pw, ph);
@@ -79,53 +68,34 @@ export default function useRecording() {
     draw();
   }, []);
 
-  const saveRecording = useCallback(async (blob, meetingCode) => {
-    const duration = secondsRef.current;
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `Recording_${stamp}_${duration}s.webm`;
+  const persist = useCallback(
+    async (blob, meetingCode) => {
+      const duration = secondsRef.current;
+      const fileName = recordingFileName('Recording', duration);
 
-    const user = auth.currentUser;
-    if (!user) {
-      downloadBlob(blob, fileName);
-      return;
-    }
-
-    const uid = user.uid;
-    const path = `recordings/${uid}/${Date.now()}_${fileName}`;
-    const storageRef = ref(storage, path);
-
-    const task = uploadBytesResumable(storageRef, blob, { contentType: 'video/webm' });
-    setUploadingName(fileName);
-    setUploadProgress(0);
-
-    task.on(
-      'state_changed',
-      (snap) => setUploadProgress(Math.round((snap.bytesTransferred / snap.bytesTotal) * 100)),
-      (err) => {
-        console.error('upload failed', err);
-        setUploadProgress(null);
-        setUploadingName(null);
-      },
-      async () => {
-        try {
-          const url = await getDownloadURL(task.snapshot.ref);
-          await addDoc(collection(db, 'users', uid, 'recordings'), {
-            name: fileName,
-            duration,
-            meetingCode: meetingCode || null,
-            size: blob.size,
-            url,
-            createdAt: serverTimestamp()
-          });
-        } catch (err) {
-          console.error('recording metadata failed', err);
-        } finally {
-          setUploadProgress(null);
-          setUploadingName(null);
+      const result = await saveRecording({
+        blob,
+        fileName,
+        duration,
+        meetingCode: meetingCode || null,
+        onProgress: (p) => {
+          if (p === null) {
+            setUploadProgress(null);
+            setUploadingName(null);
+          } else {
+            setUploadingName(fileName);
+            setUploadProgress(p);
+          }
         }
-      }
-    );
-  }, []);
+      });
+
+      if (!result.saved) return;
+      if (result.uploaded) showToast('Recording saved to your library & device');
+      else if (result.reason === 'signed-out') showToast('Recording saved to your device');
+      else showToast('Saved to your device (cloud upload unavailable)');
+    },
+    [showToast]
+  );
 
   const start = useCallback(
     ({ screenEl, camEl, localStream, remoteStreams = [], screenStream, meetingCode }) => {
@@ -145,12 +115,10 @@ export default function useRecording() {
       const tracks = [...canvasStream.getVideoTracks()];
       if (mixed?.track) tracks.push(mixed.track);
 
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
-        : 'video/webm';
+      const mimeType = pickMime();
 
       const recorder = new MediaRecorder(new MediaStream(tracks), {
-        mimeType,
+        ...(mimeType ? { mimeType } : {}),
         videoBitsPerSecond: 2_500_000
       });
       chunksRef.current = [];
@@ -161,7 +129,7 @@ export default function useRecording() {
 
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        saveRecording(blob, meetingCode);
+        persist(blob, meetingCode);
       };
 
       recorder.start(1000);
@@ -174,7 +142,7 @@ export default function useRecording() {
         setSeconds(secondsRef.current);
       }, 1000);
     },
-    [isRecording, drawComposite, saveRecording]
+    [isRecording, drawComposite, persist]
   );
 
   const stop = useCallback(() => {

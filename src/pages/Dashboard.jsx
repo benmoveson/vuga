@@ -11,12 +11,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { makeMeetingCode } from '../lib/meetingCode.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-
-function makeCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -36,14 +33,22 @@ export default function Dashboard() {
     if (!user) return;
 
     const mq = query(collection(db, 'users', user.uid, 'meetings'), orderBy('createdAt', 'desc'));
-    const unsubM = onSnapshot(mq, (snap) => {
-      setMeetings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+    const unsubM = onSnapshot(
+      mq,
+      (snap) => {
+        setMeetings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => console.error('meetings listener:', err)
+    );
 
     const rq = query(collection(db, 'users', user.uid, 'recordings'), orderBy('createdAt', 'desc'));
-    const unsubR = onSnapshot(rq, (snap) => {
-      setRecordings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+    const unsubR = onSnapshot(
+      rq,
+      (snap) => {
+        setRecordings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => console.error('recordings listener:', err)
+    );
 
     return () => {
       unsubM();
@@ -52,15 +57,21 @@ export default function Dashboard() {
   }, [user]);
 
   async function createMeeting() {
-    const code = makeCode();
-    await addDoc(collection(db, 'users', user.uid, 'meetings'), {
-      code,
-      name: `Meeting ${meetings.length + 1}`,
-      link: `${window.location.origin}/join/${code}`,
-      createdAt: serverTimestamp()
-    });
-    setCreated(`${window.location.origin}/join/${code}`);
+    const code = makeMeetingCode();
+    const link = `${window.location.origin}/join/${code}`;
+    setCreated(link);
     showToast('Meeting link created!');
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'meetings'), {
+        code,
+        name: `Meeting ${meetings.length + 1}`,
+        link,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to save meeting:', err);
+      showToast(`Link ready, but couldn't save to your library: ${err.code || err.message}`);
+    }
   }
 
   async function copyLink(link) {
@@ -103,9 +114,14 @@ export default function Dashboard() {
         <div className="container">
           <div className="dash-header">
             <h1>Welcome back, <span>{user.displayName || 'Host'}</span></h1>
-            <button className="btn btn-primary" onClick={createMeeting}>
-              <i className="fas fa-plus"></i> Create Meeting Link
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button className="btn btn-secondary" onClick={() => navigate('/record')}>
+                <i className="fas fa-circle" style={{ color: '#ff4d4f' }}></i> New Recording
+              </button>
+              <button className="btn btn-primary" onClick={createMeeting}>
+                <i className="fas fa-plus"></i> Create Meeting Link
+              </button>
+            </div>
           </div>
 
           {created && (
@@ -143,7 +159,7 @@ export default function Dashboard() {
                   <div className="meeting-item" key={m.id}>
                     <div>
                       <strong>{m.name}</strong>
-                      <div style={{ fontSize: '0.85rem', color: '#5A6478', marginTop: 4 }}>{m.link}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginTop: 4 }}>{m.link}</div>
                       <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
                         {m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString() : 'just now'}
                       </div>
