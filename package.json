@@ -14,8 +14,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@react-three/drei": "^9.114.0",
-    "@react-three/fiber": "^8.17.10",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "^4.21.1",
@@ -24,8 +22,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
     "socket.io": "^4.8.0",
-    "socket.io-client": "^4.8.0",
-    "three": "^0.169.0"
+    "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -44,14 +44,15 @@ export default defineConfig({
   ],
   server: { port: 5173 },
   build: {
-        chunkSizeWarningLimit: 1200,
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              vendor: ['react', 'react-dom', 'react-router-dom'],
-              r3f: ['@react-three/fiber', '@react-three/drei', 'three']
-            }
-          }
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          rtc: ['socket.io-client']
         }
       }
+    }
+  }
 });

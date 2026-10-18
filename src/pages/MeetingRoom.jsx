@@ -17,16 +17,25 @@ import useRecording from '../hooks/useRecording.js';
 function GuestGate({ code, onJoin }) {
   const [name, setName] = useState('');
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h2 style={{ marginBottom: 8 }}>Join meeting {code}</h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: 20, fontSize: '0.9rem' }}>Enter your name to continue.</p>
-        <div className="form-group">
+    <div className="gate">
+      <div className="card">
+        <span className="logo" style={{ color: '#fff', marginRight: 0 }}>
+          <i className="fas fa-video" style={{ color: 'var(--blue)' }}></i> Vuga
+        </span>
+        <h2>Join meeting {code}</h2>
+        <p>Enter your name to enter the room.</p>
+        <div className="fw">
           <label>Display name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && name.trim() && onJoin(name.trim())}
+            placeholder="Your name"
+          />
         </div>
-        <button className="btn btn-primary btn-block" onClick={() => name.trim() && onJoin(name.trim())}>
-          Join Meeting
+        <button className="btn block" onClick={() => name.trim() && onJoin(name.trim())}>
+          <i className="fas fa-right-to-bracket"></i> Join meeting
         </button>
       </div>
     </div>
@@ -225,123 +234,117 @@ export default function MeetingRoom() {
   const mainPeerIsHost = !!mainPeer && mainPeer.socketId === hostId;
 
   return (
-    <section className="meeting-page">
-      <div className="meeting-header">
-        <div className="meeting-title">
-          <i className={`fas fa-circle recording-indicator ${isRecording ? '' : 'hidden'}`}></i>
-          <span>Vuga Meeting</span>
-          <span className="meeting-id">{code}</span>
-        </div>
-        <div className="meeting-header-right">
+    <div className="app">
+      <header className="ah">
+        <span className="logo" style={{ marginRight: 0 }}>
+          <i className="fas fa-video" style={{ color: 'var(--blue)' }}></i> Vuga
+        </span>
+        <span className={`st ${isRecording ? 'on' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 12 }}>
+          <i className="fas fa-circle" style={{ fontSize: 8, display: isRecording ? 'inline' : 'none' }}></i>
+          {code}
+        </span>
+        <div className="grow" />
+        <div className="ua">
           {hostName && (
-            <div className="host-chip" title="Meeting host">
-              <i className="fas fa-crown"></i>
-              <span>{hostName}</span>
-              <span className="host-chip-label">Host</span>
-            </div>
+            <span className="st" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <i className="fas fa-crown" style={{ color: '#ffb020' }}></i> {hostName}
+            </span>
           )}
-          <div className="participants-count">
-            <i className="fas fa-users"></i> <span>{activePeers.length + 1}</span>
-          </div>
+          <span className="st"><i className="fas fa-users"></i> {activePeers.length + 1}</span>
         </div>
-      </div>
+      </header>
 
-      <div className="video-area">
-        <div className="main-video">
-          {mainIsScreen ? (
-            <RawVideo stream={screenStream} muted />
-          ) : activePeers.length > 0 ? (
-            <PeerVideo stream={activePeers[0].stream} />
-          ) : camOn ? (
-            <RawVideo stream={localStream} muted mirror />
-          ) : (
-            <div className="video-placeholder">
-              <i className="fas fa-video-slash"></i>
-              <p>Camera off</p>
-            </div>
-          )}
-          <span className="video-label main-label">
-            {mainLabel}
-            {mainPeerIsHost && <i className="fas fa-crown host-crown" title="Host"></i>}
-          </span>
-        </div>
-
-        <div className="video-sidebar">
-          <div className="small-video">
-            {camOn && <RawVideo stream={localStream} muted mirror />}
-            <span className="video-label">
-              You
-              {isSelfHost && <i className="fas fa-crown host-crown" title="Host"></i>}
+      <div className="rm">
+        <div className="stage-wrap">
+          <div className="main">
+            {mainIsScreen ? (
+              <RawVideo stream={screenStream} muted />
+            ) : activePeers.length > 0 ? (
+              <PeerVideo stream={activePeers[0].stream} />
+            ) : (
+              <RawVideo stream={localStream} muted mirror />
+            )}
+            <span className="nm">
+              {mainLabel}
+              {mainPeerIsHost && <i className="fas fa-crown" style={{ color: '#ffb020', marginLeft: 6 }}></i>}
             </span>
           </div>
-          {activePeers.map((p) => (
-            <div className="small-video" key={p.socketId}>
-              <PeerVideo stream={p.stream} />
-              <span className="video-label">
-                {peerLabel(p)}
-                {p.socketId === hostId && <i className="fas fa-crown host-crown" title="Host"></i>}
+
+          <div className="side">
+            <div className="t">
+              {camOn ? <RawVideo stream={localStream} muted mirror /> : <div className="av">You</div>}
+              <span className="nm">
+                You
+                {isSelfHost && <i className="fas fa-crown" style={{ color: '#ffb020', marginLeft: 6 }}></i>}
               </span>
             </div>
-          ))}
+            {activePeers.map((p) => (
+              <div className="t" key={p.socketId}>
+                <PeerVideo stream={p.stream} />
+                <span className="nm">
+                  {peerLabel(p)}
+                  {p.socketId === hostId && <i className="fas fa-crown" style={{ color: '#ffb020', marginLeft: 6 }}></i>}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Hidden source elements used for canvas compositing during recording */}
-      <video ref={camRef} autoPlay playsInline muted style={{ display: 'none' }} />
-      <video ref={screenRef} autoPlay playsInline muted style={{ display: 'none' }} />
+        {/* Hidden sources used for canvas compositing while recording */}
+        <video ref={camRef} autoPlay playsInline muted style={{ display: 'none' }} />
+        <video ref={screenRef} autoPlay playsInline muted style={{ display: 'none' }} />
 
-      <div className="controls">
-        <button className={`control-btn ${micOn ? '' : 'active'}`} onClick={toggleMic} title="Mute/Unmute">
-          <i className={`fas ${micOn ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
-        </button>
-        <button className={`control-btn ${camOn ? '' : 'active'}`} onClick={toggleCam} title="Camera">
-          <i className={`fas ${camOn ? 'fa-video' : 'fa-video-slash'}`}></i>
-        </button>
-        <button className={`control-btn ${screenStream ? 'active' : ''}`} onClick={toggleShare} title="Share Screen">
-          <i className="fas fa-desktop"></i>
-        </button>
-        <button className={`control-btn record-btn ${isRecording ? 'active' : ''}`} onClick={toggleRecording} title="Record">
-          <i className="fas fa-circle"></i>
-        </button>
-        <button className={`control-btn ${chatOpen ? 'active' : ''}`} onClick={() => setChatOpen((v) => !v)} title="Chat">
-          <i className="fas fa-comment"></i>
-        </button>
-        <button className="control-btn leave-btn" onClick={leave} title="Leave">
-          <i className="fas fa-phone-slash"></i>
-        </button>
+        <div className="controls">
+          <button className={micOn ? '' : 'off'} onClick={toggleMic} title="Mute/Unmute">
+            <i className={`fas ${micOn ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
+          </button>
+          <button className={camOn ? '' : 'off'} onClick={toggleCam} title="Camera">
+            <i className={`fas ${camOn ? 'fa-video' : 'fa-video-slash'}`}></i>
+          </button>
+          <button className={screenStream ? 'off' : ''} onClick={toggleShare} title="Share Screen">
+            <i className="fas fa-desktop"></i>
+          </button>
+          <button className={isRecording ? 'off' : ''} onClick={toggleRecording} title="Record">
+            <i className="fas fa-circle"></i>
+          </button>
+          <button className={chatOpen ? 'off' : ''} onClick={() => setChatOpen((v) => !v)} title="Chat">
+            <i className="fas fa-comment"></i>
+          </button>
+          <button className="leave" onClick={leave} title="Leave">
+            <i className="fas fa-phone-slash"></i>
+          </button>
+        </div>
       </div>
 
       {isRecording && (
-        <div className="recording-status">
-          <span className="rec-dot"></span> Recording...{' '}
+        <div className="recstatus">
+          <span className="rd"></span> Recording{' '}
           {String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}
-          <button className="btn btn-sm btn-danger" onClick={toggleRecording}>Stop & Save</button>
+          <button className="btn g sm" onClick={toggleRecording}>Stop &amp; Save</button>
         </div>
       )}
 
       {uploadProgress !== null && user && (
-        <div className="recording-status" style={{ top: 130 }}>
+        <div className="recstatus" style={{ top: 124 }}>
           <i className="fas fa-cloud-arrow-up"></i> Uploading {uploadingName}… {uploadProgress}%
         </div>
       )}
 
       {chatOpen && (
-        <div className="chat-panel">
-          <div className="chat-header">
+        <div className="chatpanel">
+          <div className="hd">
             Chat
-            <button className="btn btn-sm btn-secondary" onClick={() => setChatOpen(false)}>
-              <i className="fas fa-xmark"></i>
-            </button>
+            <button className="btn g sm" onClick={() => setChatOpen(false)}><i className="fas fa-xmark"></i></button>
           </div>
-          <div className="chat-messages">
-            <p className="system-msg">Welcome to the meeting!</p>
+          <div className="msgs">
+            <p className="sys">Welcome to the meeting!</p>
             {messages.map((m) => (
               <p key={m.id}>
-                <strong>{m.uid === identity.uid ? 'You' : m.name}:</strong> {m.text}
+                <b>{m.uid === identity.uid ? 'You' : m.name}:</b> {m.text}
               </p>
             ))}
           </div>
-          <form className="chat-input" onSubmit={sendChat}>
+          <form onSubmit={sendChat}>
             <input
               type="text"
               value={chatInput}
@@ -349,11 +352,11 @@ export default function MeetingRoom() {
               placeholder="Type a message..."
               maxLength={2000}
             />
-            <button type="submit"><i className="fas fa-paper-plane"></i></button>
+            <button type="submit" aria-label="Send"><i className="fas fa-paper-plane"></i></button>
           </form>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
