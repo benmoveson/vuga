@@ -64,7 +64,7 @@ export default function MeetingRoom() {
     setGuestName(name);
   }
 
-  const { peers, joinError, replaceVideoTrack, replaceAudioTrack } = useWebRTC(
+  const { peers, joinError, hostId, selfId, replaceVideoTrack, replaceAudioTrack } = useWebRTC(
     identity ? code : null,
     identity,
     localStream
@@ -216,6 +216,13 @@ export default function MeetingRoom() {
 
   const activePeers = peers.filter((p) => p.stream);
   const mainIsScreen = !!screenStream;
+  const isSelfHost = !!selfId && hostId === selfId;
+  const hostPeer = peers.find((p) => p.socketId === hostId);
+  const hostName = isSelfHost ? identity.name : hostPeer?.name;
+  const peerLabel = (peer) => peer.name || 'Guest';
+  const mainPeer = !mainIsScreen && activePeers.length > 0 ? activePeers[0] : null;
+  const mainLabel = mainIsScreen ? 'Your screen' : mainPeer ? peerLabel(mainPeer) : 'You';
+  const mainPeerIsHost = !!mainPeer && mainPeer.socketId === hostId;
 
   return (
     <section className="meeting-page">
@@ -225,8 +232,17 @@ export default function MeetingRoom() {
           <span>Vuga Meeting</span>
           <span className="meeting-id">{code}</span>
         </div>
-        <div className="participants-count">
-          <i className="fas fa-users"></i> <span>{activePeers.length + 1}</span>
+        <div className="meeting-header-right">
+          {hostName && (
+            <div className="host-chip" title="Meeting host">
+              <i className="fas fa-crown"></i>
+              <span>{hostName}</span>
+              <span className="host-chip-label">Host</span>
+            </div>
+          )}
+          <div className="participants-count">
+            <i className="fas fa-users"></i> <span>{activePeers.length + 1}</span>
+          </div>
         </div>
       </div>
 
@@ -244,17 +260,27 @@ export default function MeetingRoom() {
               <p>Camera off</p>
             </div>
           )}
+          <span className="video-label main-label">
+            {mainLabel}
+            {mainPeerIsHost && <i className="fas fa-crown host-crown" title="Host"></i>}
+          </span>
         </div>
 
         <div className="video-sidebar">
           <div className="small-video">
             {camOn && <RawVideo stream={localStream} muted mirror />}
-            <span className="video-label">You</span>
+            <span className="video-label">
+              You
+              {isSelfHost && <i className="fas fa-crown host-crown" title="Host"></i>}
+            </span>
           </div>
           {activePeers.map((p) => (
             <div className="small-video" key={p.socketId}>
               <PeerVideo stream={p.stream} />
-              <span className="video-label">Peer</span>
+              <span className="video-label">
+                {peerLabel(p)}
+                {p.socketId === hostId && <i className="fas fa-crown host-crown" title="Host"></i>}
+              </span>
             </div>
           ))}
         </div>

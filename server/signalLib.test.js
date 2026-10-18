@@ -4,6 +4,7 @@ import {
   MAX_ROOM_PEERS,
   cleanRoom,
   cleanStr,
+  pickNextHost,
   validSignalData
 } from './signalLib.js';
 
@@ -46,6 +47,20 @@ describe('validSignalData', () => {
     expect(validSignalData('string')).toBe(false);
     expect(validSignalData({})).toBe(false);
     expect(validSignalData({ sdp: 'not-an-object' })).toBe(false);
+  });
+});
+
+describe('pickNextHost', () => {
+  it('keeps the current host when another peer leaves', () => {
+    expect(pickNextHost(['a', 'b'], 'b', 'a')).toBe('a');
+  });
+
+  it('promotes the first remaining peer when the host leaves', () => {
+    expect(pickNextHost(['b', 'c'], 'a', 'a')).toBe('b');
+  });
+
+  it('returns null when the room empties', () => {
+    expect(pickNextHost([], 'a', 'a')).toBe(null);
   });
 });
 

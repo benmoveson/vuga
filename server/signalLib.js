@@ -22,3 +22,8 @@ export function validSignalData(data) {
   if (data.candidate && typeof data.candidate === 'object') return true;
   return false;
 }
+
+export function pickNextHost(remainingPeerIds, departedId, currentHostId) {
+  if (currentHostId && currentHostId !== departedId) return currentHostId;
+  return remainingPeerIds[0] || null;
+}

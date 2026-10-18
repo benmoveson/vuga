@@ -14,7 +14,7 @@ function buildIceServers() {
     return [
       ...stun,
       {
-        urls: turnUrl.split(',').map((s) => s.trim()).filter(Boolean),
+        urls: turnUrl.split(',').map((s) => s.trim()),
         username: import.meta.env.VITE_TURN_USERNAME || '',
         credential: import.meta.env.VITE_TURN_CREDENTIAL || ''
       }
@@ -43,6 +43,8 @@ export default function useWebRTC(roomCode, user, localStream) {
   const pendingIceRef = useRef(new Map());
   const hadConnectedRef = useRef(false);
   const [peers, setPeers] = useState([]);
+  const [hostId, setHostId] = useState(null);
+  const [selfId, setSelfId] = useState(null);
   const [joinError, setJoinError] = useState(null);
 
   const userKey = user?.uid || user?.name || 'guest';
@@ -60,7 +62,9 @@ export default function useWebRTC(roomCode, user, localStream) {
       setPeers(
         [...peersMap.entries()].map(([socketId, e]) => ({
           socketId,
-          stream: e.stream
+          stream: e.stream,
+          userId: e.userId,
+          name: e.name
         }))
       );
     }
@@ -78,9 +82,23 @@ export default function useWebRTC(roomCode, user, localStream) {
       }
     };
 
-    const createPeer = (socketId, initiator) => {
+    const removePeer = (socketId) => {
+      const entry = peersMap.get(socketId);
+      if (entry) {
+        entry.pc.close();
+        peersMap.delete(socketId);
+      }
+      pendingIce.delete(socketId);
+      publishPeers();
+    };
+
+    const createPeer = (socketId, initiator, meta = {}) => {
       const existing = peersMap.get(socketId);
-      if (existing) return existing.pc;
+      if (existing) {
+        if (meta.name && !existing.name) existing.name = meta.name;
+        if (meta.userId && !existing.userId) existing.userId = meta.userId;
+        return existing.pc;
+      }
 
       const pc = new RTCPeerConnection({ iceServers: ICE });
 
@@ -113,21 +131,13 @@ export default function useWebRTC(roomCode, user, localStream) {
         };
       }
 
-      peersMap.set(socketId, { pc, stream: null });
+      peersMap.set(socketId, { pc, stream: null, userId: meta.userId || null, name: meta.name || null });
+      publishPeers();
       return pc;
     };
 
-    const removePeer = (socketId) => {
-      const entry = peersMap.get(socketId);
-      if (entry) {
-        entry.pc.close();
-        peersMap.delete(socketId);
-      }
-      pendingIce.delete(socketId);
-      publishPeers();
-    };
-
     socket.on('connect', () => {
+      setSelfId(socket.id);
       if (hadConnectedRef.current) {
         peersMap.forEach((e) => e.pc.close());
         peersMap.clear();
@@ -151,12 +161,17 @@ export default function useWebRTC(roomCode, user, localStream) {
       );
     });
 
-    socket.on('room-peers', (existing) => {
-      existing.forEach((peer) => createPeer(peer.socketId, true));
+    socket.on('room-peers', ({ peers: existing, hostId: roomHostId }) => {
+      setHostId(roomHostId || null);
+      (existing || []).forEach((peer) => createPeer(peer.socketId, true, peer));
     });
 
     socket.on('peer-joined', (peer) => {
-      createPeer(peer.socketId, false);
+      createPeer(peer.socketId, false, peer);
+    });
+
+    socket.on('host-changed', ({ hostId: newHostId }) => {
+      setHostId(newHostId);
     });
 
     socket.on('signal', async ({ from, data }) => {
@@ -185,14 +200,10 @@ export default function useWebRTC(roomCode, user, localStream) {
           }
         } else if (data.candidate) {
           if (pc.remoteDescription) {
-            await pc.addIceCandidate(data.candidate).catch(() => {});
+            await pc.addIceCandidate(data.candidate);
           } else {
-            let queue = pendingIce.get(from);
-            if (!queue) {
-              queue = [];
-              pendingIce.set(from, queue);
-            }
-            queue.push(data.candidate);
+            if (!pendingIce.has(from)) pendingIce.set(from, []);
+            pendingIce.get(from).push(data.candidate);
           }
         }
       } catch (err) {
@@ -210,6 +221,8 @@ export default function useWebRTC(roomCode, user, localStream) {
       socket.emit('leave-room');
       socket.disconnect();
       setPeers([]);
+      setHostId(null);
+      setSelfId(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, localStream, userKey]);
@@ -228,5 +241,5 @@ export default function useWebRTC(roomCode, user, localStream) {
     });
   }
 
-  return { peers, joinError, replaceVideoTrack, replaceAudioTrack };
+  return { peers, joinError, hostId, selfId, replaceVideoTrack, replaceAudioTrack };
 }

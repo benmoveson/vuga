@@ -545,13 +545,46 @@ body {
 
 .video-label {
   position: absolute;
-  bottom: 6px;
-  left: 8px;
-  font-size: 0.75rem;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 2px 8px;
-  border-radius: 6px;
+  bottom: 8px;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #E2E8F0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.main-label {
+  bottom: 16px;
+  left: 20px;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+}
+
+.host-crown { color: #FFC53D; }
+
+.meeting-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.host-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.host-chip i { color: #FFC53D; margin-right: 4px; }
 
 .controls {
   display: flex;

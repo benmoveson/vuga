@@ -11,7 +11,8 @@ import {
   SIGNAL_BURST,
   cleanRoom,
   cleanStr,
-  validSignalData
+  validSignalData,
+  pickNextHost
 } from './signalLib.js';
 
 const PORT = process.env.PORT || 3001;
@@ -31,8 +32,12 @@ const io = new Server(http, {
 
 const rooms = new Map();
 
+function getRoom(room) {
+  return rooms.get(room);
+}
+
 function roomUsers(room) {
-  return [...(rooms.get(room)?.values() || [])];
+  return [...(getRoom(room)?.peers.values() || [])];
 }
 
 io.on('connection', (socket) => {
@@ -53,10 +58,18 @@ io.on('connection', (socket) => {
   const leaveCurrentRoom = () => {
     if (!joinedRoom || !me) return;
     socket.to(joinedRoom).emit('peer-left', { socketId: socket.id, userId: me.userId });
-    const set = rooms.get(joinedRoom);
-    if (set) {
-      set.delete(socket.id);
-      if (set.size === 0) rooms.delete(joinedRoom);
+    const roomState = getRoom(joinedRoom);
+    if (roomState) {
+      roomState.peers.delete(socket.id);
+      if (roomState.peers.size === 0) {
+        rooms.delete(joinedRoom);
+      } else {
+        const nextHostId = pickNextHost([...roomState.peers.keys()], socket.id, roomState.hostId);
+        if (nextHostId && nextHostId !== roomState.hostId) {
+          roomState.hostId = nextHostId;
+          io.to(joinedRoom).emit('host-changed', { hostId: nextHostId });
+        }
+      }
     }
     socket.leave(joinedRoom);
     joinedRoom = null;
@@ -83,10 +96,13 @@ io.on('connection', (socket) => {
     };
 
     const existing = roomUsers(room);
-    if (!rooms.has(room)) rooms.set(room, new Map());
-    rooms.get(room).set(socket.id, me);
+    if (!rooms.has(room)) rooms.set(room, { peers: new Map(), hostId: null });
+    const roomState = rooms.get(room);
+    roomState.peers.set(socket.id, me);
+    if (!roomState.hostId) roomState.hostId = socket.id;
+
     socket.join(room);
-    socket.emit('room-peers', existing);
+    socket.emit('room-peers', { peers: existing, hostId: roomState.hostId });
     socket.to(room).emit('peer-joined', me);
     if (typeof ack === 'function') ack({ ok: true });
   });
@@ -97,7 +113,7 @@ io.on('connection', (socket) => {
     const { to, data } = payload;
     if (typeof to !== 'string' || !validSignalData(data)) return;
     if (!allowSignal()) return;
-    const target = rooms.get(joinedRoom)?.get(to);
+    const target = getRoom(joinedRoom)?.peers.get(to);
     if (!target) return;
     io.to(target.socketId).emit('signal', { from: socket.id, data });
   });

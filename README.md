@@ -101,8 +101,10 @@ Point `VITE_SERVER_URL` at that server before building.
 
 1. Host: sign up → **Create Meeting Link** → **Enter Meeting Room**.
 2. Guest: open the link. Logged-out guests are asked for a display name.
-3. Use the controls to mute, toggle camera, **share screen**, open **chat**, and **record**.
-4. Stop & Save uploads the WebM (camera PiP composited over screen share) to Firebase Storage
+3. Every video tile shows the participant's name. The first person in the room is the
+   **host** (crown badge + header chip); if they leave, hosting passes to the next participant.
+4. Use the controls to mute, toggle camera, **share screen**, open **chat**, and **record**.
+5. Stop & Save uploads the WebM (camera PiP composited over screen share) to Firebase Storage
    and lists it under **Dashboard → Recordings**.
 
 ## Notes
