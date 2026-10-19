@@ -50,17 +50,21 @@ export default function useRecording() {
       }
 
       if (screen && cam && cam.videoWidth) {
-        const pw = 320;
-        const ph = (cam.videoHeight / cam.videoWidth) * pw;
-        const x = W - pw - 32;
-        const y = H - ph - 32;
+        const size = 240;
+        const cx = W - size / 2 - 32;
+        const cy = H - size / 2 - 32;
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(x - 4, y - 4, pw + 8, ph + 8, 12);
+        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
         ctx.fillStyle = '#e8590c';
         ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2 - 6, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(cam, x, y, pw, ph);
+        const cscale = Math.max(size / cam.videoWidth, size / cam.videoHeight);
+        const cw = cam.videoWidth * cscale;
+        const ch = cam.videoHeight * cscale;
+        ctx.drawImage(cam, cx - cw / 2, cy - ch / 2, cw, ch);
         ctx.restore();
       }
       rafRef.current = requestAnimationFrame(draw);
@@ -102,7 +106,10 @@ export default function useRecording() {
       if (isRecording) return;
       if (!canvasRef.current) {
         const c = document.createElement('canvas');
-        c.style.display = 'none';
+        c.width = 1280;
+        c.height = 720;
+        c.style.cssText =
+          'position:fixed;left:-10000px;top:0;width:1280px;height:720px;pointer-events:none;';
         document.body.appendChild(c);
         canvasRef.current = c;
       }

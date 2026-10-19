@@ -217,8 +217,8 @@ export default function MeetingRoom() {
           ))}
         </div>
 
-        <video ref={camRef} autoPlay playsInline muted style={{ display: 'none' }} />
-        <video ref={screenRef} autoPlay playsInline muted style={{ display: 'none' }} />
+        <video ref={camRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }} />
+        <video ref={screenRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 1280, height: 720, pointerEvents: 'none' }} />
 
         <div className="ctl rcl">
           <button type="button" className={micOn ? '' : 'on'} onClick={toggleMic}>{micOn ? '🎤 Mute' : '🔇 Unmute'}</button>
