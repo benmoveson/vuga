@@ -6,19 +6,22 @@ import useWebRTC from '../hooks/useWebRTC.js';
 import useRecording from '../hooks/useRecording.js';
 import Wordmark from '../components/Wordmark.jsx';
 
-const COLORS = ['#6b4bd8', '#0ca678', '#d6336c', '#1c7ed6', '#f59f00', '#e8590c'];
-const colorFor = (key = '') => {
+const COLORS = ['#6b4bd8', '#0ca678', '#d6336c', '#1c7ed6', '#f59e0b', '#e8590c'];
+
+function colorFor(seed) {
   let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h + key.charCodeAt(i)) % COLORS.length;
-  return COLORS[h];
-};
-const initialsOf = (name = '') =>
-  name
+  for (let i = 0; i < (seed || '').length; i += 1) h = (h * 31 + seed.charCodeAt(i)) % COLORS.length;
+  return COLORS[Math.abs(h) % COLORS.length];
+}
+
+function initialsOf(name) {
+  return (name || 'Guest')
     .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
+    .map((p) => p.charAt(0))
     .join('')
-    .toUpperCase() || 'G';
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 const fmt = (s) => `${('0' + Math.floor(s / 60)).slice(-2)}:${('0' + (s % 60)).slice(-2)}`;
 
@@ -39,31 +42,26 @@ function PeerVideo({ stream }) {
 }
 
 export default function MeetingRoom() {
-  const { code } = useParams();
   const navigate = useNavigate();
+  const { code } = useParams();
   const { user } = useAuth();
   const showToast = useToast();
-
-  const [guest] = useState(() => ({
-    uid: `guest-${Math.random().toString(36).slice(2, 9)}`,
-    name: 'Guest'
-  }));
-
-  const identity = useMemo(
-    () =>
-      user
-        ? { uid: user.uid, name: user.displayName || user.email || 'Host' }
-        : guest,
-    [user, guest]
-  );
 
   const [localStream, setLocalStream] = useState(null);
   const [screenStream, setScreenStream] = useState(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
-
+  const [guestId] = useState(() => `guest-${Math.random().toString(36).slice(2, 8)}`);
   const camRef = useRef(null);
   const screenRef = useRef(null);
+
+  const identity = useMemo(
+    () => ({
+      name: user?.displayName || user?.email?.split('@')[0] || 'Guest',
+      uid: user?.uid || guestId
+    }),
+    [user, guestId]
+  );
 
   const { peers, joinError } = useWebRTC(code, identity, localStream);
   const { isRecording, seconds, start, stop } = useRecording();
@@ -139,7 +137,7 @@ export default function MeetingRoom() {
       screenEl: screenRef.current,
       camEl: camRef.current,
       localStream,
-      remoteStreams: activePeers.map((p) => p.stream),
+      remoteStreams: peers.map((p) => p.stream).filter(Boolean),
       screenStream,
       meetingCode: code
     });
@@ -163,39 +161,26 @@ export default function MeetingRoom() {
   }
 
   return (
-    <div id="app" className="on">
-      <header className="ah">
+    <div className="lm-app">
+      <header className="lm-top">
         <a className="logo" href="#top" aria-label="Vuga" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
           <Wordmark />
         </a>
-        <div className="ar2">
-          <span>Hi, <b>{identity.name}</b></span>
-          <div className="ua">{initialsOf(identity.name)}</div>
-          <a className="btn g sm" href="#top" onClick={(e) => { e.preventDefault(); leave(); }}>Log out</a>
+        <span className="pill2">{code}</span>
+        <div className="lm-grow" />
+        <div className="lm-right">
+          <span className="lm-avatar" title={identity.name}>{initialsOf(identity.name)}</span>
         </div>
       </header>
 
-      <main className="rm on" id="room">
-        <div className="rt">
-          <a className="more" href="#/app" onClick={(e) => { e.preventDefault(); leave(); }}>← Dashboard</a>
-          <span className={`rec${isRecording ? ' on' : ''}`} id="rrec">REC <span id="rtm">{fmt(seconds)}</span></span>
-          <span className="pill2" id="rcode">{code}</span>
-        </div>
-
-        <div className={`rs${sharing ? ' sh' : ''}`} id="rs">
-          <div className="t scr">
-            {screenStream ? (
+      <div className="lm-stage">
+        <div className="lm-tiles">
+          {screenStream && (
+            <div className="t scr">
               <SelfVideo stream={screenStream} />
-            ) : (
-              <div style={{ width: '70%', background: '#0a110d', borderRadius: 10, padding: 14 }}>
-                <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0', width: '40%' }} />
-                <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0' }} />
-                <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0', width: '70%' }} />
-              </div>
-            )}
-            <small>Your screen</small>
-          </div>
-
+              <small>Your screen</small>
+            </div>
+          )}
           <div className="t sp">
             {camOn && localStream ? (
               <SelfVideo stream={localStream} muted />
@@ -204,7 +189,6 @@ export default function MeetingRoom() {
             )}
             <small>You</small>
           </div>
-
           {activePeers.map((p) => (
             <div className="t" key={p.socketId}>
               {p.stream ? (
@@ -216,19 +200,21 @@ export default function MeetingRoom() {
             </div>
           ))}
         </div>
+      </div>
 
-        <video ref={camRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }} />
-        <video ref={screenRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 1280, height: 720, pointerEvents: 'none' }} />
+      <div className="lm-bar">
+        <button type="button" className={`lm-ctrl${micOn ? '' : ' off'}`} onClick={toggleMic} title="Microphone">{micOn ? '🎤' : '🔇'}</button>
+        <button type="button" className={`lm-ctrl${camOn ? '' : ' off'}`} onClick={toggleCam} title="Camera">📷</button>
+        <button type="button" className={`lm-ctrl${sharing ? ' rec' : ''}`} onClick={toggleShare} title="Share screen">🖥️</button>
+        <button type="button" className={`lm-ctrl${isRecording ? ' rec' : ''}`} onClick={toggleRecord} title="Record">{isRecording ? '⏹️' : '⏺️'}</button>
+        {isRecording && <span className="lm-timer">{fmt(seconds)}</span>}
+        <span className="lm-sep" />
+        <button type="button" className="lm-ctrl" onClick={copyLink} title="Copy link">🔗</button>
+        <button type="button" className="lm-ctrl leave" onClick={leave}>Leave</button>
+      </div>
 
-        <div className="ctl rcl">
-          <button type="button" className={micOn ? '' : 'on'} onClick={toggleMic}>{micOn ? '🎤 Mute' : '🔇 Unmute'}</button>
-          <button type="button" className={camOn ? '' : 'on'} onClick={toggleCam}>📷 Camera</button>
-          <button type="button" className={sharing ? 'on' : ''} onClick={toggleShare}>{sharing ? '🛑 Stop sharing' : '🖥️ Share screen'}</button>
-          <button type="button" className={isRecording ? 'on' : ''} onClick={toggleRecord}>{isRecording ? '⏹️ Stop' : '⏺️ Record'}</button>
-          <button type="button" onClick={copyLink}>🔗 Copy link</button>
-          <button type="button" className="x" onClick={leave}>✕ Leave</button>
-        </div>
-      </main>
+      <video ref={camRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }} />
+      <video ref={screenRef} autoPlay playsInline muted style={{ position: 'fixed', left: -10000, top: 0, width: 1280, height: 720, pointerEvents: 'none' }} />
     </div>
   );
 }

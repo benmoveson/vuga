@@ -41,6 +41,7 @@ export default function Dashboard() {
 
   const [links, setLinks] = useState(SAMPLE_LINKS);
   const [recordings, setRecordings] = useState(SAMPLE_RECORDINGS);
+  const [tab, setTab] = useState('links');
   const [renaming, setRenaming] = useState(null);
   const [renameVal, setRenameVal] = useState('');
 
@@ -64,29 +65,28 @@ export default function Dashboard() {
     );
   }, [user]);
 
-  const name = ((user?.displayName || user?.email || 'Guest')).split('@')[0].split(' ')[0];
-  const initial = (name[0] || 'G').toUpperCase();
+  const name = (user?.displayName || user?.email?.split('@')[0] || 'there');
+  const initial = name.charAt(0).toUpperCase();
   const isGuest = !user;
 
   async function createLink() {
-    const code = makeMeetingCode();
-    if (user) {
-      try {
+    try {
+      const code = makeMeetingCode();
+      if (user) {
         await addDoc(collection(db, 'users', user.uid, 'meetings'), {
-          code,
           name: 'New deal room',
-          link: `${window.location.origin}/join/${code}`,
+          code,
           createdAt: serverTimestamp()
         });
-      } catch (err) {
-        console.error('create meeting failed:', err);
-        showToast('Link ready, but it could not be saved');
-        return;
+      } else {
+        setLinks((l) => [{ id: `local-${Date.now()}`, name: 'New deal room', code }, ...l]);
       }
-    } else {
-      setLinks((l) => [{ id: `local-${Date.now()}`, name: 'New deal room', code }, ...l]);
+      setTab('links');
+      showToast('Entry link created');
+    } catch (err) {
+      console.error('create meeting failed:', err);
+      showToast('Could not create link');
     }
-    showToast('Entry link created');
   }
 
   async function copyLink(code) {
@@ -136,52 +136,52 @@ export default function Dashboard() {
   if (loading) return null;
 
   return (
-    <div id="app" className="on">
-      <header className="ah">
+    <div className="lm-app">
+      <header className="lm-top">
         <a className="logo" href="#top" aria-label="Vuga" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
           <Wordmark />
         </a>
-        <div className="ar2">
-          <span>Hi, <b>{name}</b></span>
-          <div className="ua">{initial}</div>
-          <a className="btn g sm" href="#top" onClick={(e) => { e.preventDefault(); logout().then(() => navigate('/')); }}>Log out</a>
+        <div className="lm-grow" />
+        <div className="lm-right">
+          <button className="btn sm" type="button" onClick={() => navigate('/record')}>🎥 Record</button>
+          <div className="lm-avatar" title={name}>{initial}</div>
+          <button className="lm-iconbtn" type="button" title="Log out" aria-label="Log out" onClick={() => logout().then(() => navigate('/'))}>
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+          </button>
         </div>
       </header>
 
-      <main className="am on" id="dash">
-        <div className="dh">
-          <div>
-            <h2>Hello, <span>{name}</span> 👋</h2>
-            <p>Here’s what’s happening in your deal rooms.</p>
+      <div className="lm-body">
+        <aside className="lm-side">
+          <a className={tab === 'links' ? 'on' : ''} onClick={() => setTab('links')}><span className="lm-ic">🔗</span>Meeting links</a>
+          <a className={tab === 'recs' ? 'on' : ''} onClick={() => setTab('recs')}><span className="lm-ic">🎬</span>Recordings</a>
+        </aside>
+
+        <main className="lm-main">
+          <div className="lm-head">
+            <h1>{tab === 'links' ? `Hi, ${name}` : 'Recordings'}</h1>
+            <div className="lm-grow" />
+            {tab === 'links' && (
+              <button className="btn" type="button" onClick={createLink}>+ New link</button>
+            )}
           </div>
-          <div>
-            <button className="btn" id="nl" type="button" onClick={createLink}>+ Create entry link</button>
-            <button className="btn g" id="rsb" type="button" onClick={() => navigate('/record')}>🎥 Record screen</button>
-          </div>
-        </div>
 
-        {isGuest && (
-          <div className="gb">You’re exploring Vuga as a guest. The links, recordings and numbers below are sample data.</div>
-        )}
+          {isGuest && (
+            <div className="gb">You’re exploring Vuga as a guest. The links and recordings below are sample data.</div>
+          )}
 
-        <div className="kp">
-          <div><b>{links.length}</b><span>Meetings this month</span></div>
-          <div><b>2</b><span>Deals closed</span></div>
-        </div>
-
-        <div className="d2">
-          <div className="cd">
-            <h3>Your meeting links</h3>
-            <div id="ll">
-              {links.length === 0 ? (
-                <div className="lr"><span>No meeting links yet. Create your first one.</span></div>
-              ) : (
-                links.map((link) => (
-                  <div className="lr" key={link.id}>
-                    <div>
+          {tab === 'links' ? (
+            links.length === 0 ? (
+              <div className="lm-empty">No meeting links yet. Create your first one.</div>
+            ) : (
+              <div className="lm-grid">
+                {links.map((link) => (
+                  <div className="lm-card" key={link.id}>
+                    <div className="lm-thumb">🔗</div>
+                    <div className="lm-cbody">
                       {renaming === link.id ? (
                         <input
-                          className="ri"
+                          className="lm-input"
                           value={renameVal}
                           autoFocus
                           onChange={(e) => setRenameVal(e.target.value)}
@@ -192,44 +192,44 @@ export default function Dashboard() {
                           onBlur={() => commitRename(link.id)}
                         />
                       ) : (
-                        <b className="nm" title="Click to rename" onClick={() => startRename(link)}>{link.name}</b>
+                        <h4 title="Click to rename" style={{ cursor: 'text' }} onClick={() => startRename(link)}>{link.name}</h4>
                       )}
-                      <a className="jl" onClick={() => navigate(`/join/${link.code}`)}>vuga.app/m/{link.code}</a>
+                      <p>vuga.app/m/{link.code}</p>
                     </div>
-                    <div className="bs">
+                    <div className="lm-cfoot">
                       <button className="btn g sm" type="button" onClick={() => copyLink(link.code)}>Copy</button>
                       <button className="btn sm" type="button" onClick={() => navigate(`/join/${link.code}`)}>Join</button>
-                      <button className="btn g sm ib" type="button" title="Rename" aria-label="Rename" onClick={() => startRename(link)}><PencilIcon /></button>
-                      <button className="btn g sm ib" type="button" title="Delete" aria-label="Delete" onClick={() => deleteLink(link.id)}><TrashIcon /></button>
+                      <button className="lm-iconbtn" type="button" title="Rename" aria-label="Rename" onClick={() => startRename(link)}><PencilIcon /></button>
+                      <button className="lm-iconbtn" type="button" title="Delete" aria-label="Delete" onClick={() => deleteLink(link.id)}><TrashIcon /></button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-          <div className="cd">
-            <h3>Recordings</h3>
-            <div id="rl">
-              {recordings.length === 0 && (
-                <div className="lr"><span>No recordings yet. Record a meeting to see them here.</span></div>
-              )}
+                ))}
+              </div>
+            )
+          ) : recordings.length === 0 ? (
+            <div className="lm-empty">No recordings yet. Record a meeting to see them here.</div>
+          ) : (
+            <div className="lm-grid">
               {recordings.map((r) => (
-                <div className="lr" key={r.id}>
-                  <div>
-                    <b>{r.name}</b>
-                    <span>{formatDate(r)} · saved to device</span>
+                <div className="lm-card" key={r.id}>
+                  <div className="lm-thumb">🎬</div>
+                  <div className="lm-cbody">
+                    <h4>{r.name}</h4>
+                    <p>{formatDate(r)} · saved to device</p>
                   </div>
-                  {r.url ? (
-                    <a className="btn g sm" href={r.url} target="_blank" rel="noreferrer" download>Save</a>
-                  ) : (
-                    <span className="pill2">.webm</span>
-                  )}
+                  <div className="lm-cfoot">
+                    {r.url ? (
+                      <a className="btn g sm" href={r.url} target="_blank" rel="noreferrer" download>Save</a>
+                    ) : (
+                      <span className="pill2">.webm</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </main>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

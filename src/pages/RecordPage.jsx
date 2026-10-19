@@ -28,6 +28,8 @@ export default function RecordPage() {
   const [camStream, setCamStream] = useState(null);
   const [starting, setStarting] = useState(false);
   const [pipOpen, setPipOpen] = useState(false);
+  const [wantCamera, setWantCamera] = useState(true);
+  const [wantMic, setWantMic] = useState(true);
   const screenRef = useRef(null);
   const camRef = useRef(null);
   const selfieRef = useRef(null);
@@ -76,7 +78,7 @@ export default function RecordPage() {
     })();
   }, [screenStream, camStream, start, pipOpen]);
 
-  function openCameraBubble() {
+  async function openCameraBubble() {
     const dpip = window.documentPictureInPicture;
     if (!dpip) return null;
     try {
@@ -120,11 +122,13 @@ export default function RecordPage() {
 
     setStarting(true);
 
-    let pip;
-    try {
-      pip = await openCameraBubble();
-    } catch {
-      pip = null;
+    let pip = null;
+    if (wantCamera) {
+      try {
+        pip = await openCameraBubble();
+      } catch {
+        pip = null;
+      }
     }
     pipRef.current = pip;
 
@@ -142,16 +146,18 @@ export default function RecordPage() {
     }
 
     let cam = null;
-    try {
-      cam = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
-        audio: true
-      });
-    } catch {
-      showToast('Camera unavailable — recording your screen only');
+    if (wantCamera || wantMic) {
+      try {
+        cam = await navigator.mediaDevices.getUserMedia({
+          video: wantCamera ? { width: 640, height: 480, facingMode: 'user' } : false,
+          audio: wantMic
+        });
+      } catch {
+        showToast('Camera/mic unavailable — recording your screen only');
+      }
     }
 
-    const bubble = Boolean(pip && cam);
+    const bubble = Boolean(pip && cam && wantCamera);
     if (bubble) {
       fillBubble(pip, cam);
       setPipOpen(true);
@@ -173,61 +179,72 @@ export default function RecordPage() {
   }
 
   return (
-    <div id="app" className="on">
-      <header className="ah">
+    <div className="lm-app">
+      <header className="lm-top">
         <a className="logo" href="#top" aria-label="Vuga" onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
           <Wordmark />
         </a>
-        <div className="ar2">
-          <a className="btn g sm" href="#top" onClick={(e) => { e.preventDefault(); navigate(-1); }}>Back</a>
+        <div className="lm-grow" />
+        <div className="lm-right">
+          <button className="btn g sm" type="button" onClick={() => { releaseStreams(); navigate(-1); }}>Close</button>
         </div>
       </header>
 
-      <main className="am on" id="dash">
-        <div className="dh">
-          <div>
-            <h2>Record your screen</h2>
-            <p>Capture your screen and save it straight to your device.</p>
-          </div>
-          <div>
-            <span className={`rec${isRecording ? ' on' : ''}`} id="rrec">REC <span>{fmt(seconds)}</span></span>
-          </div>
-        </div>
-        <div className="cd">
-          <div className={`rs${screenStream ? ' sh' : ''}`}>
-            <div className="t scr">
-              {screenStream ? (
-                <video ref={screenRef} autoPlay playsInline muted />
-              ) : (
-                <div style={{ width: '70%', background: '#0a110d', borderRadius: 10, padding: 14 }}>
-                  <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0', width: '40%' }} />
-                  <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0' }} />
-                  <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0', width: '70%' }} />
-                </div>
-              )}
-              {camStream && !pipOpen && (
-                <div className="selfie">
-                  <video ref={selfieRef} autoPlay playsInline muted />
-                </div>
-              )}
-              <small>Your screen</small>
+      <div className="lm-stage-rec">
+        <div className="lm-preview">
+          {screenStream ? (
+            <video ref={screenRef} autoPlay playsInline muted />
+          ) : (
+            <div className="lm-placeholder">
+              <div className="lm-big">⏺</div>
+              <span>Click Record to capture your screen and camera bubble.</span>
             </div>
-          </div>
-          <div className="ctl rcl">
-            <button type="button" className={isRecording ? 'on' : ''} onClick={toggle} disabled={starting}>
-              {starting ? '⏳ Starting…' : isRecording ? '⏹️ Stop' : '⏺️ Record'}
-            </button>
-          </div>
+          )}
+          {wantCamera && camStream && !pipOpen && (
+            <div className="lm-selfie">
+              <video ref={selfieRef} autoPlay playsInline muted />
+            </div>
+          )}
         </div>
+      </div>
 
-        <video
-          ref={camRef}
-          autoPlay
-          playsInline
-          muted
-          style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }}
-        />
-      </main>
+      <div className="lm-bar">
+        <span className="lm-pill on">🖥️ Screen</span>
+        <button
+          type="button"
+          className={`lm-pill${wantCamera ? ' on' : ''}`}
+          onClick={() => setWantCamera((v) => !v)}
+          disabled={isRecording || starting}
+        >
+          📷 Camera
+        </button>
+        <button
+          type="button"
+          className={`lm-recbtn${isRecording ? ' stop' : ''}`}
+          onClick={toggle}
+          disabled={starting}
+          title={isRecording ? 'Stop recording' : 'Start recording'}
+        >
+          {starting ? '…' : isRecording ? <span className="lm-sq" /> : 'REC'}
+        </button>
+        <button
+          type="button"
+          className={`lm-pill${wantMic ? ' on' : ''}`}
+          onClick={() => setWantMic((v) => !v)}
+          disabled={isRecording || starting}
+        >
+          {wantMic ? '🎤 Mic' : '🔇 Mic'}
+        </button>
+        {isRecording && <span className="lm-timer">{fmt(seconds)}</span>}
+      </div>
+
+      <video
+        ref={camRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }}
+      />
     </div>
   );
 }
