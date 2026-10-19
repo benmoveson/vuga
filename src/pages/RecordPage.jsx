@@ -33,6 +33,7 @@ export default function RecordPage() {
   const selfieRef = useRef(null);
   const pipRef = useRef(null);
   const pendingRef = useRef(false);
+  const floatingRef = useRef(false);
 
   function closePiP() {
     try {
@@ -61,7 +62,7 @@ export default function RecordPage() {
     pendingRef.current = false;
 
     const screenEl = screenRef.current;
-    const camEl = camStream ? camRef.current : null;
+    const camEl = camStream && !floatingRef.current ? camRef.current : null;
     (async () => {
       await Promise.all([whenReady(screenEl), whenReady(camEl)]);
       start({
@@ -150,12 +151,16 @@ export default function RecordPage() {
       showToast('Camera unavailable — recording your screen only');
     }
 
-    if (pip && cam) {
+    const bubble = Boolean(pip && cam);
+    if (bubble) {
       fillBubble(pip, cam);
       setPipOpen(true);
     } else if (pip) {
       closePiP();
     }
+
+    const surface = screen.getVideoTracks()[0].getSettings?.().displaySurface;
+    floatingRef.current = bubble && surface === 'monitor';
 
     screen.getVideoTracks()[0].addEventListener('ended', () => {
       stop();
