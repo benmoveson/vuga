@@ -27,11 +27,25 @@ export default function RecordPage() {
   const [screenStream, setScreenStream] = useState(null);
   const [camStream, setCamStream] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [pipOpen, setPipOpen] = useState(false);
   const screenRef = useRef(null);
   const camRef = useRef(null);
+  const selfieRef = useRef(null);
+  const pipRef = useRef(null);
   const pendingRef = useRef(false);
 
+  function closePiP() {
+    try {
+      pipRef.current?.close();
+    } catch {
+      /* already closed */
+    }
+    pipRef.current = null;
+    setPipOpen(false);
+  }
+
   function releaseStreams() {
+    closePiP();
     screenStream?.getTracks().forEach((t) => t.stop());
     camStream?.getTracks().forEach((t) => t.stop());
     setScreenStream(null);
@@ -42,6 +56,7 @@ export default function RecordPage() {
     if (!screenStream) return;
     if (screenRef.current) screenRef.current.srcObject = screenStream;
     if (camRef.current && camStream) camRef.current.srcObject = camStream;
+    if (selfieRef.current && camStream) selfieRef.current.srcObject = camStream;
     if (!pendingRef.current) return;
     pendingRef.current = false;
 
@@ -58,7 +73,41 @@ export default function RecordPage() {
       });
       setStarting(false);
     })();
-  }, [screenStream, camStream, start]);
+  }, [screenStream, camStream, start, pipOpen]);
+
+  function openCameraBubble() {
+    const dpip = window.documentPictureInPicture;
+    if (!dpip) return null;
+    try {
+      return dpip.requestWindow({ width: 220, height: 220, disallowReturnToOpener: true });
+    } catch {
+      return null;
+    }
+  }
+
+  function fillBubble(pip, cam) {
+    const doc = pip.document;
+    const style = doc.createElement('style');
+    style.textContent =
+      ':root,body{margin:0;height:100%;background:transparent;overflow:hidden}' +
+      '.bub{position:fixed;inset:0;display:grid;place-items:center}' +
+      'video{width:calc(100% - 14px);height:calc(100% - 14px);object-fit:cover;border-radius:50%;' +
+      'transform:scaleX(-1);border:3px solid #e8590c;box-sizing:border-box;background:#000}';
+    doc.head.appendChild(style);
+    const wrap = doc.createElement('div');
+    wrap.className = 'bub';
+    const v = doc.createElement('video');
+    v.autoplay = true;
+    v.playsInline = true;
+    v.muted = true;
+    v.srcObject = cam;
+    wrap.appendChild(v);
+    doc.body.appendChild(wrap);
+    pip.addEventListener('pagehide', () => {
+      pipRef.current = null;
+      setPipOpen(false);
+    });
+  }
 
   async function toggle() {
     if (isRecording) {
@@ -67,7 +116,17 @@ export default function RecordPage() {
       showToast('Recording saved to your device');
       return;
     }
+
     setStarting(true);
+
+    let pip;
+    try {
+      pip = await openCameraBubble();
+    } catch {
+      pip = null;
+    }
+    pipRef.current = pip;
+
     let screen;
     try {
       screen = await navigator.mediaDevices.getDisplayMedia({
@@ -75,6 +134,7 @@ export default function RecordPage() {
         audio: true
       });
     } catch {
+      closePiP();
       setStarting(false);
       showToast('Screen share cancelled');
       return;
@@ -88,6 +148,13 @@ export default function RecordPage() {
       });
     } catch {
       showToast('Camera unavailable — recording your screen only');
+    }
+
+    if (pip && cam) {
+      fillBubble(pip, cam);
+      setPipOpen(true);
+    } else if (pip) {
+      closePiP();
     }
 
     screen.getVideoTracks()[0].addEventListener('ended', () => {
@@ -133,9 +200,9 @@ export default function RecordPage() {
                   <i style={{ display: 'block', height: 8, borderRadius: 4, background: '#33433b', margin: '8px 0', width: '70%' }} />
                 </div>
               )}
-              {camStream && (
+              {camStream && !pipOpen && (
                 <div className="selfie">
-                  <video ref={camRef} autoPlay playsInline muted />
+                  <video ref={selfieRef} autoPlay playsInline muted />
                 </div>
               )}
               <small>Your screen</small>
@@ -147,6 +214,14 @@ export default function RecordPage() {
             </button>
           </div>
         </div>
+
+        <video
+          ref={camRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ position: 'fixed', left: -10000, top: 0, width: 640, height: 480, pointerEvents: 'none' }}
+        />
       </main>
     </div>
   );
