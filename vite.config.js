@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: 'Vuga',
         description: 'Create a meeting link, video call, share your screen, and record instantly.',
         theme_color: '#e8590c',
-        background_color: '#faf7f2',
+        background_color: '#0a110d',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -22,7 +22,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,svg,ico,png,woff2}'],
+        globPatterns: ['**/*.{js,css,svg,ico,png,jpg,jpeg,webp,woff2}'],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
